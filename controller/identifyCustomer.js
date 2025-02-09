@@ -50,7 +50,6 @@ export default async function identifyCustomer(req, res) {
                 secondaryContactIds: [] // Array of all Contact IDs that are "secondary" to the primary contact
             }
         }
-        // console.log(primaryContacts, 'primary');
 
         if (primaryContacts.length == 1) {
             //only 1 primary contact so update required
