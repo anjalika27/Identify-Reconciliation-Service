@@ -2,12 +2,15 @@ import pool from "../config/db.js";
 import { v4 as uuid } from "uuid";
 
 export default async function identifyCustomer(req, res) {
-    const { email, phoneNumber } = req.body;
+    let { email, phoneNumber } = req.body;
 
     try {
         if (!email && !phoneNumber) return res.status(404).json({ error: "Add data to identify" });
-
-        const data = await pool.query('select * from "Contact" where "email"=($1) or "phoneNumber"=($2)', [email, phoneNumber]);
+    
+        const data = await pool.query(
+            'SELECT * FROM "Contact" WHERE ("email" = $1 OR "phoneNumber" = $2) AND "email" IS NOT NULL AND "phoneNumber" IS NOT NULL', 
+            [email, phoneNumber]
+          );
 
         if (data.rowCount == 0) {
             const id = uuid();
@@ -17,8 +20,8 @@ export default async function identifyCustomer(req, res) {
             const response = {
                 contact: {
                     primaryContatctId: id,
-                    emails: [email], // first element being email of primary contact 
-                    phoneNumbers: [phoneNumber], // first element being phoneNumber of primary contact
+                    emails: [email].filter((r)=>r), // first element being email of primary contact 
+                    phoneNumbers: [phoneNumber].filter((r)=>r), // first element being phoneNumber of primary contact
                     secondaryContactIds: [] // Array of all Contact IDs that are "secondary" to the primary contact
                 }
             }
@@ -55,21 +58,23 @@ export default async function identifyCustomer(req, res) {
             //only 1 primary contact so update required
             const id = uuid();
             if (alreadyExists == 0) {
-                const addPrimaryContact = await pool.query('insert into "Contact" ("id","phoneNumber","email","linkedId","linkPrecedence","createdAt","updatedAt","deletedAt") values ($1,$2,$3,$4,$5,$6,$7,$8)', [id.toString(), phoneNumber.toString(), email.toString(), primaryContacts[0].id.toString(), 'secondary', new Date().toISOString(), new Date().toISOString(), null]);
+                const addPrimaryContact = await pool.query('insert into "Contact" ("id","phoneNumber","email","linkedId","linkPrecedence","createdAt","updatedAt","deletedAt") values ($1,$2,$3,$4,$5,$6,$7,$8)', [id, phoneNumber, email, primaryContacts[0].id, 'secondary', new Date().toISOString(), new Date().toISOString(), null]);
             }
 
             response.contact.primaryContatctId = primaryContacts[0].id;
 
             let secondaryemails = secondaryContacts.map((row) => row.email);
-            secondaryemails = [primaryContacts[0].email, ...secondaryemails, email]
-            response.contact.emails = [...new Set(secondaryemails)];
-            console.log(response.contact.emails, 'emails');
+            secondaryemails = [primaryContacts[0].email, ...secondaryemails]
+            if(secondaryemails)secondaryemails.push(email)
+            response.contact.emails = [...new Set(secondaryemails)].filter((r)=>r)
+            console.log(response.contact.emails, 'emails1');
 
 
             let secondaryphone = secondaryContacts.map((row) => row.phoneNumber);
-            secondaryphone = [primaryContacts[0].phoneNumber, ...secondaryphone,phoneNumber.toString()]
-            response.contact.phoneNumbers = [...new Set(secondaryphone)];
-            console.log(response.contact.phoneNumbers, 'phone');
+            secondaryphone = [primaryContacts[0].phoneNumber, ...secondaryphone]
+            if(phoneNumber) secondaryphone.push(phoneNumber.toString())
+            response.contact.phoneNumbers = [...new Set(secondaryphone)].filter((r)=>"")
+            console.log(response.contact.phoneNumbers, 'phone1');
 
             let secondaryids = secondaryContacts.map((row) => row.id);
             if(alreadyExists==0)
@@ -81,7 +86,7 @@ export default async function identifyCustomer(req, res) {
         else {
             const id = uuid();
             if (alreadyExists == 0) {
-                const addPrimaryContact = await pool.query('insert into "Contact" ("id","phoneNumber","email","linkedId","linkPrecedence","createdAt","updatedAt","deletedAt") values ($1,$2,$3,$4,$5,$6,$7,$8)', [id.toString(), phoneNumber.toString(), email.toString(), primaryContacts[0].id.toString(), 'secondary', new Date().toISOString(), new Date().toISOString(), null]);
+                const addPrimaryContact = await pool.query('insert into "Contact" ("id","phoneNumber","email","linkedId","linkPrecedence","createdAt","updatedAt","deletedAt") values ($1,$2,$3,$4,$5,$6,$7,$8)', [id, phoneNumber, email, primaryContacts[0].id, 'secondary', new Date().toISOString(), new Date().toISOString(), null]);
             }
 
             const sameEmailContact = primaryContacts.filter((row) => row.email == email)
@@ -92,15 +97,17 @@ export default async function identifyCustomer(req, res) {
             response.contact.primaryContatctId = sameEmailContact[0].id;
 
             let secondaryemails = secondaryContacts.map((row) => row.email);
-            secondaryemails = [sameEmailContact[0].email, ...secondaryemails, samePhoneContact[0].email,email]
-            response.contact.emails = [...new Set(secondaryemails)];
-            console.log(response.contact.emails, 'emails');
+            secondaryemails = [sameEmailContact[0].email, ...secondaryemails, samePhoneContact[0].email]
+            if(secondaryemails) secondaryemails.push(email)
+            response.contact.emails = [...new Set(secondaryemails)].filter((r)=>r)
+            console.log(response.contact.emails, 'emails2');
 
 
             let secondaryphone = secondaryContacts.map((row) => row.phoneNumber);
-            secondaryphone = [sameEmailContact[0].phoneNumber, ...secondaryphone,samePhoneContact[0].phoneNumber,phoneNumber.toString()]
-            response.contact.phoneNumbers = [...new Set(secondaryphone)];
-            console.log(response.contact.phoneNumbers, 'phone');
+            secondaryphone = [sameEmailContact[0].phoneNumber, ...secondaryphone,samePhoneContact[0].phoneNumber]
+            if(phoneNumber) secondaryphone.push(phoneNumber.toString())
+            response.contact.phoneNumbers = [...new Set(secondaryphone)].filter((r)=>"")
+            console.log(response.contact.phoneNumbers, 'phone2');
 
             let secondaryids = secondaryContacts.map((row) => row.id);
             if(alreadyExists==0)
