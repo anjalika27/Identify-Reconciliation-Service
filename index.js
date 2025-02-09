@@ -3,6 +3,8 @@ import { configDotenv } from "dotenv";
 import identifyCustomer from "./controller/identifyCustomer.js";
 
 const app = express();
+app.use(express.json());
+
 configDotenv();
 
 const PORT = process.env.PORT;
