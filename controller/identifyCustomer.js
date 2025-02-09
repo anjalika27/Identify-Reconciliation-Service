@@ -54,6 +54,7 @@ export default async function identifyCustomer(req, res) {
         }
 
         if (primaryContacts.length == 1) {
+            //only 1 primary contact so update required
             if (alreadyExists == 0) {
                 const id = uuid();
                 const addPrimaryContact = await pool.query('insert into "Contact" ("id","phoneNumber","email","linkedId","linkPrecedence","createdAt","updatedAt","deletedAt") values ($1,$2,$3,$4,$5,$6,$7,$8)', [id.toString(), phoneNumber.toString(), email.toString(), primaryContacts[0].id.toString(), 'secondary', new Date().toISOString(), new Date().toISOString(), null]);
